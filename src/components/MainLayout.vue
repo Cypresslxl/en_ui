@@ -6,13 +6,22 @@
         <header
             class="bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center"
         >
-            <!-- Left side: Learning Records Button -->
-            <button
-                @click="toggleLearningRecords"
-                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-            >
-                Learning Records
-            </button>
+            <!-- Left side: Learning Records Button and Help Button -->
+            <div class="flex items-center">
+                <button
+                    @click="toggleLearningRecords"
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                >
+                    Learning Records
+                </button>
+                <button
+                    v-if="selectedRecord"
+                    @click="openHelpDialog"
+                    class="ml-5 px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+                >
+                    ?
+                </button>
+            </div>
 
             <!-- Right side: Language, Theme, Sign Up, Sign In -->
             <div class="flex items-center space-x-4">
@@ -91,21 +100,25 @@
         </header>
 
         <!-- Main Content -->
-        <main class="flex-grow relative">
+        <!-- Main Content -->
+        <main class="flex-grow relative overflow-hidden">
             <!-- Learning Records Sidebar -->
             <div
-                v-if="showLearningRecords"
-                class="absolute left-0 top-0 bottom-0 w-64 bg-white dark:bg-gray-800 shadow-lg transition-transform transform"
+                class="absolute left-0 top-0 bottom-0 w-64 bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out transform"
                 :class="{ '-translate-x-full': !showLearningRecords }"
             >
                 <h2 class="text-xl font-bold p-4 border-b dark:border-gray-700">
                     {{ language === 'en' ? 'Learning Records' : '学习记录' }}
                 </h2>
                 <ul class="p-4 space-y-2">
-                    <li v-for="record in learningRecords" :key="record.id">
+                    <li
+                        v-for="record in learningRecords"
+                        :key="record.id"
+                        class="flex items-center justify-between"
+                    >
                         <button
                             @click="selectRecord(record)"
-                            class="w-full text-left p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                            class="flex-grow text-left p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                             :class="{
                                 'bg-blue-100 dark:bg-blue-900':
                                     selectedRecord === record,
@@ -113,35 +126,148 @@
                         >
                             {{ record.title }}
                         </button>
+                        <button
+                            v-if="record.isChanged"
+                            @click="saveRecord(record)"
+                            class="ml-2 px-2 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+                        >
+                            Save
+                        </button>
                     </li>
                 </ul>
             </div>
 
             <!-- Content Area -->
-            <div class="p-8" :class="{ 'ml-64': showLearningRecords }">
-                <h1 class="text-3xl font-bold mb-6">
-                    {{
-                        selectedRecord
-                            ? selectedRecord.title
-                            : language === 'en'
-                            ? 'Welcome to My Blog'
-                            : '欢迎来到我的博客'
-                    }}
-                </h1>
+            <div
+                class="p-8 transition-all duration-300 ease-in-out"
+                :class="{ 'ml-64': showLearningRecords }"
+            >
                 <div v-if="selectedRecord">
-                    <p>{{ selectedRecord.content }}</p>
+                    <!-- Editable Title -->
+                    <h1
+                        class="text-3xl font-bold mb-6 cursor-text"
+                        @dblclick="startEditing('title')"
+                    >
+                        <span v-if="!isEditing.title">{{
+                            selectedRecord.title
+                        }}</span>
+                        <input
+                            v-else
+                            v-model="editableContent.title"
+                            @blur="stopEditing('title')"
+                            @keyup.enter="stopEditing('title')"
+                            class="w-full bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-500"
+                            ref="titleInput"
+                        />
+                    </h1>
+
+                    <!-- Editable Content -->
+                    <div
+                        class="prose dark:prose-invert max-w-none"
+                        @dblclick="startEditing('content')"
+                    >
+                        <div
+                            v-if="!isEditing.content"
+                            v-html="selectedRecord.content"
+                        ></div>
+                        <div v-else class="relative">
+                            <textarea
+                                v-model="editableContent.content"
+                                @blur="stopEditing('content')"
+                                class="w-full min-h-[200px] bg-transparent border rounded p-2 focus:outline-none focus:border-blue-500"
+                                ref="contentInput"
+                            ></textarea>
+                            <div
+                                v-if="editableContent.content === ''"
+                                class="absolute left-2 top-2 flex items-center space-x-2"
+                            >
+                                <button
+                                    @click="openFormatMenu"
+                                    class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="h-5 w-5"
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor"
+                                    >
+                                        <path
+                                            d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"
+                                        />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div v-else>
                     <p>
                         {{
                             language === 'en'
-                                ? 'This is the main blog content.'
-                                : '这是主要的博客内容。'
+                                ? 'Select a learning record to view or edit.'
+                                : '选择一个学习记录来查看或编辑。'
                         }}
                     </p>
                 </div>
             </div>
         </main>
+
+        <!-- Format Menu -->
+        <div
+            v-if="showFormatMenu"
+            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+        >
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xl">
+                <h3 class="text-lg font-bold mb-2">
+                    {{ language === 'en' ? 'Choose Format' : '选择格式' }}
+                </h3>
+                <div class="space-y-2">
+                    <button
+                        @click="applyFormat('h1')"
+                        class="block w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                        H1
+                    </button>
+                    <button
+                        @click="applyFormat('h2')"
+                        class="block w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                        H2
+                    </button>
+                    <button
+                        @click="applyFormat('h3')"
+                        class="block w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                        H3
+                    </button>
+                    <button
+                        @click="applyFormat('p')"
+                        class="block w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                        Plain Text
+                    </button>
+                </div>
+                <h3 class="text-lg font-bold mt-4 mb-2">
+                    {{ language === 'en' ? 'Font Size' : '字体大小' }}
+                </h3>
+                <div class="space-y-2">
+                    <button
+                        v-for="size in [10, 12, 14, 16, 18, 20]"
+                        :key="size"
+                        @click="applyFontSize(size)"
+                        class="block w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                        {{ size }}px
+                    </button>
+                </div>
+                <button
+                    @click="closeFormatMenu"
+                    class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                    {{ language === 'en' ? 'Close' : '关闭' }}
+                </button>
+            </div>
+        </div>
 
         <!-- Sign Up Dialog -->
         <div
@@ -242,11 +368,21 @@
                 </button>
             </div>
         </div>
+
+        <!-- Help Dialog -->
+        <HelpDialog
+            :show="showHelpDialog"
+            :title="helpDialogTitle"
+            :instructions="helpInstructions"
+            :closeButtonText="helpCloseButtonText"
+            @close="closeHelpDialog"
+        />
     </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, nextTick, computed } from 'vue';
+import HelpDialog from '@/components/common/HelpDialog.vue';
 
 const showLearningRecords = ref(false);
 const selectedRecord = ref(null);
@@ -260,12 +396,64 @@ const signUpPassword = ref('');
 const loginCredential = ref('');
 const loginPassword = ref('');
 
+const isEditing = ref({ title: false, content: false });
+const editableContent = ref({ title: '', content: '' });
+const showFormatMenu = ref(false);
+const showHelpDialog = ref(false);
+
+const titleInput = ref(null);
+const contentInput = ref(null);
+
 const learningRecords = ref([
-    { id: 1, title: 'Vue 3', content: 'Vue 3 learning content...' },
-    { id: 2, title: 'JavaScript', content: 'JavaScript learning content...' },
-    { id: 3, title: 'Go', content: 'Go learning content...' },
-    { id: 4, title: 'PostgreSQL', content: 'PostgreSQL learning content...' },
+    {
+        id: 1,
+        title: 'Vue 3',
+        content: '<p>Vue 3 learning content...</p>',
+        isChanged: false,
+    },
+    {
+        id: 2,
+        title: 'JavaScript',
+        content: '<p>JavaScript learning content...</p>',
+        isChanged: false,
+    },
+    {
+        id: 3,
+        title: 'Go',
+        content: '<p>Go learning content...</p>',
+        isChanged: false,
+    },
+    {
+        id: 4,
+        title: 'PostgreSQL',
+        content: '<p>PostgreSQL learning content...</p>',
+        isChanged: false,
+    },
 ]);
+
+const helpDialogTitle = computed(() =>
+    language.value === 'en' ? 'Editing Instructions' : '编辑说明'
+);
+const helpInstructions = computed(() => [
+    language.value === 'en'
+        ? 'Use <p>...</p> for paragraphs'
+        : '使用 <p>...</p> 来创建段落',
+    language.value === 'en'
+        ? 'Use <h1>...</h1> to <h6>...</h6> for headings'
+        : '使用 <h1>...</h1> 到 <h6>...</h6> 来创建标题',
+    language.value === 'en'
+        ? 'Use <ul> and <li> for unordered lists'
+        : '使用 <ul> 和 <li> 来创建无序列表',
+    language.value === 'en'
+        ? 'Use <ol> and <li> for ordered lists'
+        : '使用 <ol> 和 <li> 来创建有序列表',
+    language.value === 'en'
+        ? 'Use <a href="...">...</a> for links'
+        : '使用 <a href="...">...</a> 来创建链接',
+]);
+const helpCloseButtonText = computed(() =>
+    language.value === 'en' ? 'Close' : '关闭'
+);
 
 const toggleLearningRecords = () => {
     showLearningRecords.value = !showLearningRecords.value;
@@ -276,8 +464,69 @@ const toggleLearningRecords = () => {
 
 const selectRecord = (record) => {
     selectedRecord.value = record;
+    editableContent.value = { title: record.title, content: record.content };
 };
 
+const startEditing = (field) => {
+    isEditing.value[field] = true;
+    nextTick(() => {
+        if (field === 'title' && titleInput.value) {
+            titleInput.value.focus();
+        } else if (field === 'content' && contentInput.value) {
+            contentInput.value.focus();
+        }
+    });
+};
+
+const stopEditing = (field) => {
+    isEditing.value[field] = false;
+    if (selectedRecord.value) {
+        if (selectedRecord.value[field] !== editableContent.value[field]) {
+            selectedRecord.value[field] = editableContent.value[field];
+            selectedRecord.value.isChanged = true;
+        }
+    }
+};
+
+const saveRecord = async (record) => {
+    try {
+        // Simulating a backend request
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        console.log('Saving record:', record);
+        record.isChanged = false;
+        // You would typically update the backend here
+    } catch (error) {
+        console.error('Error saving record:', error);
+    }
+};
+
+const openFormatMenu = () => {
+    showFormatMenu.value = true;
+};
+
+const closeFormatMenu = () => {
+    showFormatMenu.value = false;
+};
+
+const openHelpDialog = () => {
+    showHelpDialog.value = true;
+};
+
+const closeHelpDialog = () => {
+    showHelpDialog.value = false;
+};
+
+const applyFormat = (format) => {
+    const content = editableContent.value.content;
+    editableContent.value.content = `<${format}>${content}</${format}>`;
+    closeFormatMenu();
+};
+
+const applyFontSize = (size) => {
+    const content = editableContent.value.content;
+    editableContent.value.content = `<span style="font-size: ${size}px;">${content}</span>`;
+    closeFormatMenu();
+};
 const toggleLanguage = () => {
     language.value = language.value === 'en' ? 'zh' : 'en';
 };
@@ -336,3 +585,10 @@ watch(
     { immediate: true }
 );
 </script>
+
+<style>
+/* Add any additional styles here if needed */
+.prose {
+    max-width: none;
+}
+</style>
