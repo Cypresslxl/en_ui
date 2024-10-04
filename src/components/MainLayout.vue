@@ -270,6 +270,7 @@
         </div>
 
         <!-- Sign Up Dialog -->
+        <!-- Sign Up Dialog -->
         <div
             v-if="showSignUpDialog"
             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
@@ -277,45 +278,95 @@
             <div
                 class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl max-w-md w-full"
             >
-                <h2 class="text-2xl font-bold mb-4">
-                    {{ language === 'en' ? 'Sign Up' : '注册' }}
-                </h2>
-                <form @submit.prevent="submitSignUp">
+                <h2 class="text-2xl font-bold mb-4">Sign Up</h2>
+                <form @submit.prevent="handleSignUp">
                     <div class="mb-4">
-                        <label class="block mb-2">{{
-                            language === 'en' ? 'Email or Phone' : '邮箱或手机'
-                        }}</label>
+                        <label
+                            for="signUpCredential"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                        >
+                            Email or Username
+                        </label>
                         <input
                             v-model="signUpCredential"
+                            id="signUpCredential"
                             type="text"
-                            class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
                             required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         />
                     </div>
                     <div class="mb-4">
-                        <label class="block mb-2">{{
-                            language === 'en' ? 'Password' : '密码'
-                        }}</label>
+                        <label
+                            for="signUpPassword"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                        >
+                            Password
+                        </label>
                         <input
                             v-model="signUpPassword"
+                            id="signUpPassword"
                             type="password"
-                            class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
                             required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         />
                     </div>
-                    <button
-                        type="submit"
-                        class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600"
-                    >
-                        {{ language === 'en' ? 'Sign Up' : '注册' }}
-                    </button>
+                    <div class="mb-4">
+                        <label
+                            for="signUpPasswordConfirm"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                        >
+                            Confirm Password
+                        </label>
+                        <input
+                            v-model="signUpPasswordConfirm"
+                            id="signUpPasswordConfirm"
+                            type="password"
+                            required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                    </div>
+                    <div v-if="passwordError" class="text-red-500 text-sm mb-4">
+                        {{ passwordError }}
+                    </div>
+                    <div v-if="signUpAttempts >= 3" class="mb-4">
+                        <label
+                            for="captcha"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                        >
+                            Verification Code
+                        </label>
+                        <div class="flex items-center">
+                            <input
+                                v-model="captchaInput"
+                                id="captcha"
+                                type="text"
+                                required
+                                class="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            />
+                            <img
+                                :src="captchaImage"
+                                alt="Captcha"
+                                class="ml-2 h-10 w-32 object-cover"
+                                @click="refreshCaptcha"
+                            />
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button
+                            type="button"
+                            @click="closeSignUpDialog"
+                            class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600"
+                        >
+                            Sign Up
+                        </button>
+                    </div>
                 </form>
-                <button
-                    @click="closeSignUpDialog"
-                    class="mt-4 text-sm text-gray-600 dark:text-gray-400 hover:underline"
-                >
-                    {{ language === 'en' ? 'Close' : '关闭' }}
-                </button>
             </div>
         </div>
 
@@ -330,7 +381,7 @@
                 <h2 class="text-2xl font-bold mb-4">
                     {{ language === 'en' ? 'Log In' : '登录' }}
                 </h2>
-                <form @submit.prevent="submitLogin">
+                <form @submit.prevent="handleLogin">
                     <div class="mb-4">
                         <label class="block mb-2">{{
                             language === 'en' ? 'Email or Phone' : '邮箱或手机'
@@ -383,6 +434,7 @@
 <script setup>
 import { ref, watch, nextTick, computed } from 'vue';
 import HelpDialog from '@/components/common/HelpDialog.vue';
+import { signUp, login, SignUpData, LoginData } from '@/api/auth';
 
 const showLearningRecords = ref(false);
 const selectedRecord = ref(null);
@@ -392,7 +444,22 @@ const isDarkMode = ref(false);
 const showSignUpDialog = ref(false);
 const showLoginDialog = ref(false);
 const signUpCredential = ref('');
+
+//Sign up dialog
 const signUpPassword = ref('');
+const signUpPasswordConfirm = ref('');
+const passwordError = ref('');
+const signUpAttempts = ref(0);
+const captchaInput = ref('');
+const captchaImage = ref('');
+const validatePassword = (password) => {
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const isLongEnough = password.length >= 12;
+
+    return hasUpperCase && hasLowerCase && isLongEnough;
+};
+
 const loginCredential = ref('');
 const loginPassword = ref('');
 
@@ -544,6 +611,87 @@ const closeSignUpDialog = () => {
     showSignUpDialog.value = false;
     signUpCredential.value = '';
     signUpPassword.value = '';
+    signUpPasswordConfirm.value = '';
+    passwordError.value = '';
+    signUpAttempts.value = 0;
+    captchaInput.value = '';
+};
+
+const handleSignUp = async () => {
+    if (signUpPassword.value !== signUpPasswordConfirm.value) {
+        passwordError.value = 'Passwords do not match';
+        return;
+    }
+
+    if (!validatePassword(signUpPassword.value)) {
+        passwordError.value =
+            'Password must contain both uppercase and lowercase letters, and be at least 12 characters long';
+        return;
+    }
+
+    if (signUpAttempts.value >= 3 && captchaInput.value !== 'CAPTCHA') {
+        // Replace 'CAPTCHA' with actual verification
+        passwordError.value = 'Invalid verification code';
+        refreshCaptcha();
+        return;
+    }
+
+    const signUpData = {
+        credential: signUpCredential.value || '',
+        password: signUpPassword.value || '',
+    };
+
+    try {
+        const response = await signUp(signUpData);
+        if (response.success) {
+            console.log('Sign up successful:', response.message);
+            // Handle successful sign up (e.g., show success message, auto-login, etc.)
+            closeSignUpDialog();
+        } else {
+            console.error('Sign up failed:', response.message);
+            passwordError.value = response.message;
+            signUpAttempts.value++;
+            if (signUpAttempts.value >= 3) {
+                refreshCaptcha();
+            }
+        }
+    } catch (error) {
+        console.error('Error during sign up:', error);
+        passwordError.value =
+            'An error occurred during sign up. Please try again.';
+        signUpAttempts.value++;
+        if (signUpAttempts.value >= 3) {
+            refreshCaptcha();
+        }
+    }
+};
+
+const handleLogin = async () => {
+    const loginData = {
+        credential: loginCredential.value || '',
+        password: loginPassword.value || '',
+    };
+
+    try {
+        const response = await login(loginData);
+        if (response.success) {
+            console.log('Login successful:', response.message);
+            // Handle successful login (e.g., store token, update UI, etc.)
+            closeLoginDialog();
+        } else {
+            console.error('Login failed:', response.message);
+            // Handle login failure (e.g., show error message)
+        }
+    } catch (error) {
+        console.error('Error during login:', error);
+        // Handle error (e.g., show error message)
+    }
+};
+
+const refreshCaptcha = () => {
+    // In a real application, you would generate a new captcha image here
+    // For this example, we'll just use a placeholder
+    captchaImage.value = `/placeholder.svg?height=40&width=120&text=CAPTCHA`;
 };
 
 const submitSignUp = () => {
@@ -564,12 +712,6 @@ const closeLoginDialog = () => {
     showLoginDialog.value = false;
     loginCredential.value = '';
     loginPassword.value = '';
-};
-
-const submitLogin = () => {
-    console.log('Login submitted:', loginCredential.value, loginPassword.value);
-    // Implement your login logic here
-    closeLoginDialog();
 };
 
 // Watch for changes in isDarkMode and update the class on the html element
