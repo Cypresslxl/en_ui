@@ -49,7 +49,7 @@
                             alt="User avatar"
                             class="w-8 h-8 rounded-full object-cover"
                         />
-                        <span class="ml-2">{{ user.name }}</span>
+                        <span class="ml-2">{{ user?.name }}</span>
                     </button>
                     <div
                         v-if="showUserMenu"
@@ -427,13 +427,14 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, computed } from 'vue';
+import { ref, watch, nextTick, computed, defineComponent } from 'vue';
 import HelpDialog from '@/components/common/HelpDialog.vue';
 import { useStore } from 'vuex';
 import UserDetailsDialog from '@/views/mainPages/components/UserDetailsDialog.vue';
 import PasswordDialog from '@/views/mainPages/components/PasswordDialog.vue';
 import { signUp, login, SignUpData, LoginData } from '@/api/auth';
-
+import { RootState } from '@/store';
+import { User } from '@/store/modules/auth';
 const store = useStore();
 
 const showLearningRecords = ref(false);
@@ -605,6 +606,15 @@ const applyFontSize = (size) => {
 };
 const toggleLanguage = () => {
     language.value = language.value === 'en' ? 'zh' : 'en';
+};
+
+const toggleDarkMode = () => {
+    isDarkMode.value = !isDarkMode.value;
+    document.documentElement.classList.toggle('dark');
+};
+
+const toggleUserMenu = () => {
+    showUserMenu.value = !showUserMenu.value;
 };
 
 const toggleTheme = () => {
