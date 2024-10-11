@@ -6,8 +6,8 @@
 //     baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
 // });
 import axios from 'axios';
-import { api } from '@/api/api'
-//1. Sign up 
+import { api } from '@/api/api';
+//1. Sign up
 /**
  * Sign up data interface.
  */
