@@ -4,8 +4,9 @@
     </div>
 </template>
 
-<script setup>
-import MainLayout from './components/MainLayout.vue';
+<script setup lang="ts">
+// import MainLayout from './components/MainLayout.vue';
+import MainLayout from '@/views/mainPages/MainLayout.vue';
 </script>
 
 <style>
